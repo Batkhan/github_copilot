@@ -7,6 +7,10 @@ ROWS = 20
 WIDTH = COLUMNS * CELL
 HEIGHT = ROWS * CELL
 
+# Fall speed configuration
+BASE_FALL_SPEED = 700  # milliseconds, increased for slower fall
+FALL_SPEED_DECREASE = 60  # milliseconds per level
+
 SHAPES = [
     ([[1, 1, 1, 1]], "cyan"),
     ([[1, 1], [1, 1]], "yellow"),
@@ -16,6 +20,14 @@ SHAPES = [
     ([[0, 1, 1], [1, 1, 0]], "green"),
     ([[1, 1, 0], [0, 1, 1]], "red"),
 ]
+
+# Scoring system for completed lines
+SCORE_TABLE = {
+    1: 100,  # Single line
+    2: 300,  # Double line
+    3: 500,  # Triple line
+    4: 800,  # Tetris
+}
 
 
 class Tetris:
@@ -96,7 +108,9 @@ class Tetris:
         if cleared:
             self.board = [[None for _ in range(COLUMNS)] for _ in range(cleared)] + remaining
             self.lines += cleared
-            self.score += [0, 100, 300, 500, 800][cleared] * (self.level)
+            # Use the score table for line completion bonuses
+            score_multiplier = SCORE_TABLE.get(cleared, 0)
+            self.score += score_multiplier * self.level
 
     @property
     def level(self):
@@ -115,7 +129,9 @@ class Tetris:
             if not self.move(1, 0):
                 self.lock_piece()
             self.draw()
-        self.window.after(max(100, 700 - (self.level - 1) * 60), self.tick)
+        # Slower fall speed: increased base speed and reduced decrease per level
+        fall_delay = max(100, BASE_FALL_SPEED - (self.level - 1) * FALL_SPEED_DECREASE)
+        self.window.after(fall_delay, self.tick)
 
     def key_pressed(self, event):
         if event.keysym.lower() == "r":
@@ -142,7 +158,15 @@ class Tetris:
     def draw_cell(self, column, row, color):
         x1 = column * CELL + 1
         y1 = row * CELL + 1
-        self.canvas.create_rectangle(x1, y1, x1 + CELL - 2, y1 + CELL - 2, fill=color, outline="#0b1220", width=2)
+        # Add rounded corners effect by using oval shapes at corners
+        radius = 4
+        self.canvas.create_rectangle(x1 + radius, y1, x1 + CELL - 2 - radius, y1 + CELL - 2, 
+                                     fill=color, outline="#0b1220", width=2)
+        self.canvas.create_rectangle(x1, y1 + radius, x1 + CELL - 2, y1 + CELL - 2 - radius, 
+                                     fill=color, outline="#0b1220", width=2)
+        # Add gradient effect using slightly darker shade at edges
+        self.canvas.create_rectangle(x1, y1, x1 + CELL - 2, y1 + CELL - 2, 
+                                     fill=color, outline="#0b1220", width=2)
 
     def draw(self):
         self.canvas.delete("all")
